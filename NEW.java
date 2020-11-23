@@ -1,3 +1,4 @@
+package net.codejava;
 import java.beans.Statement;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -11,18 +12,15 @@ public class NEW {
   public static void main(String[] args) {
     // TODO code application logic here
  //  not sure if below URL is correct
-    String url = "jdbc:mysql://projg.cse.cuhk.edu.hk:2633/group4";
+    String url = "jdbc:mysql://projgw.cse.cuhk.edu.hk:2633/group4";
     String username = "Group4";
     String password = "3170group4";
     
-    Connection conn = null;
+
     try {
-      Class.forName("com.mysql.jdbc.Driver");
-	conn = DriverManager.getConnection(url, username, password);
-    } catch (ClassNotFoundException e) {
-      // handle any errors
-      System.out.println("[ERROR] Java MySQL DBDriver not found!!");
-      System.exit(0);
+    	//Class.forName("com.mysql.jdbc.Driver");
+    	Connection conn = DriverManager.getConnection(url, username, password);
+    	main_menu(conn);
     } catch (SQLException e) {
      System.out.println(e);
     }
