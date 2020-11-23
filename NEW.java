@@ -11,7 +11,7 @@ import java.util.Scanner;
 public class NEW {
   public static void main(String[] args) {
     // TODO code application logic here
- //  not sure if below URL is correct
+ //  The URL should be correct now
     String url = "jdbc:mysql://projgw.cse.cuhk.edu.hk:2633/group4";
     String username = "Group4";
     String password = "3170group4";
