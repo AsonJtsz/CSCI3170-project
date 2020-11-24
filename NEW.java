@@ -35,24 +35,45 @@ public class NEW {
 	    System.out.println("4. A manager");
 	    System.out.println("5. None of the above");
 	    Scanner scan = new Scanner(System.in);
-	    do {
-	      System.out.print("Please enter [1-4]");
-	      input = scan.nextInt();
-	    } while (input < 1 || input > 5);
-	    if (input == 1)
-	      admin_operation(conn);
-	    else if (input == 2)
-	      passenger_operation(conn);
-	    else if (input == 3)
-	      driver_operation(conn);
-	    else if (input == 4)
-		  manager_operation(conn);
-	    else if (input == 5) {
+// 	    do {
+// 	      System.out.print("Please enter [1-4]");
+// 	      input = scan.nextInt();
+// 	    } while (input < 1 || input > 5);
+// 	    if (input == 1)
+// 	      admin_operation(conn);
+// 	    else if (input == 2)
+// 	      passenger_operation(conn);
+// 	    else if (input == 3)
+// 	      driver_operation(conn);
+// 	    else if (input == 4)
+// 		  manager_operation(conn);
+// 	    else if (input == 5) {
+// 	      System.out.println("Good bye :)");
+// 	    System.exit(1); }
+// 	      else {
+// 	     System.out.println("[ERROR] Invalid input");
+// 	    }
+		
+   	 while (true) {
+		Scanner scan = new Scanner(System.in);
+	
+	System.out.print("Please enter [1-4]");
+		input = scan.nextInt();
+	    if (input == 1) {
+	    	System.out.println(1);}
+	    else if (input == 2) {
+	    	System.out.println(2);} 
+	    else if (input == 3) {
+	    	System.out.println(3); }
+	    else if (input == 4) {
+	    	System.out.println(4);;  
+	    	} else if (input == 5) {
 	      System.out.println("Good bye :)");
-	    System.exit(1); }
-	      else {
-	     System.out.println("[ERROR] Invalid input");
-	    }
+	    System.exit(1);
+	    } else System.out.println("[ERROR] Invalid input");
+	
+		}		
+
 	  }
 	
 	
