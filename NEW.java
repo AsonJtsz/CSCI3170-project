@@ -95,6 +95,8 @@ public class NEW {
 		
 		
 	private static void manager_operation(Connection conn) {
+		
+		
 		String NewTable1 = "CREATE TABLE Manager (" 
 	            + "Tid integer primary key,"  
 	            + "Dname varchar(20)," 
@@ -111,33 +113,40 @@ public class NEW {
 		
 		Scanner myObj = new Scanner(System.in);
 		
-		statement.executeUpdate("DROP TABLE IF EXISTS Manager;");
-		statement.executeUpdate(NewTable1);
-		statement.executeUpdate(InsertManager);
-		
-		System.out.println("Manager, what would you like to do?\r\n1. Find trips\r\n2. Go back\r\nPlease enter [1-2]");
-			int option = myObj.nextInt();
-			if(option == 1) {
-				System.out.println("Please enter the minimum traveling distance.");
-				int MinDis = myObj.nextInt();
-				System.out.println("Please enter the maximum traveling distance.");
-				int MaxDis = myObj.nextInt();
-				//System.out.println("Data: " +MinDis +MaxDis);
-				String ResultQuery = "select * from Manager where distance > ? and distance < ?;";
-				PreparedStatement preparedStatement = connection.prepareStatement(ResultQuery);
-				preparedStatement.setInt(1, MinDis);
-				preparedStatement.setInt(2, MaxDis);
-				ResultSet result = preparedStatement.executeQuery();
-				System.out.println("trip id, driver name, passenger name,start location, destination, duration");
-				ResultSetMetaData rsmd = result.getMetaData();
-				int columnsNumber = rsmd.getColumnCount();
+		Statement statement;
+		try {
+			statement = conn.createStatement();
+			statement.executeUpdate("DROP TABLE IF EXISTS Manager;");
+			statement.executeUpdate(NewTable1);
+			statement.executeUpdate(InsertManager);
+			
+			System.out.println("Manager, what would you like to do?\r\n1. Find trips\r\n2. Go back\r\nPlease enter [1-2]");
+				int option = myObj.nextInt();
+				if(option == 1) {
+					System.out.println("Please enter the minimum traveling distance.");
+					int MinDis = myObj.nextInt();
+					System.out.println("Please enter the maximum traveling distance.");
+					int MaxDis = myObj.nextInt();
+					//System.out.println("Data: " +MinDis +MaxDis);
+					String ResultQuery = "select Tid,Dname,Pname,start_location,destination,duration,distance from Manager where distance > ? and distance < ?;";
+					PreparedStatement preparedStatement = conn.prepareStatement(ResultQuery);
+					preparedStatement.setInt(1, MinDis);
+					preparedStatement.setInt(2, MaxDis);
+					ResultSet result = preparedStatement.executeQuery();
+					System.out.println("trip id, driver name, passenger name,start location, destination, duration");
+					ResultSetMetaData rsmd = result.getMetaData();
+					int columnsNumber = rsmd.getColumnCount();
 
-				while (result.next()) {
-				    for(int i = 1; i < columnsNumber; i++)
-				        System.out.print(result.getString(i) + " ");
-				    System.out.println();
+					while (result.next()) {
+					    for(int i = 1; i < columnsNumber; i++)
+					        System.out.print(result.getString(i) + " ");
+					    System.out.println();
+					}
 				}
-			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 	}
 
