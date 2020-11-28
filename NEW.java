@@ -95,8 +95,25 @@ public class NEW {
 		
 		
 	private static void manager_operation(Connection conn) {
+		String NewTable1 = "CREATE TABLE Manager (" 
+	            + "Tid integer primary key,"  
+	            + "Dname varchar(20)," 
+	            + "Pname varchar(20)," 
+	            + "start_location varchar(20),"
+	            + "destination varchar(20),"
+	            + "duration integer,"
+	            + "distance integer)";
 		
 		
+		String InsertManager = "Insert into Manager(Tid,Dname,Pname,start_location,destination,duration, distance)" 
+	            + "Select Distinct T.ID,D.name,P.name, T.start_location, T.destination , (EXTRACT(MINUTE FROM (end_time - start_time)) + EXTRACT(hour FROM (end_time - start_time))*60), (ABS(TS.x - TE.x) + ABS(TS.y - TE.y))"  
+	            + "from (((trip T Join driver D on T.driver_id = D.id) join passengers P on T.passenger_id = P.id)join taxi_stop TS on TS.name = T.start_location)join taxi_stop TE on TE.name = T.destination;";
+		
+		Scanner myObj = new Scanner(System.in);
+		
+		statement.executeUpdate("DROP TABLE IF EXISTS Manager;");
+		statement.executeUpdate(NewTable1);
+		statement.executeUpdate(InsertManager);
 		
 		System.out.println("Manager, what would you like to do?\r\n1. Find trips\r\n2. Go back\r\nPlease enter [1-2]");
 			int option = myObj.nextInt();
@@ -106,13 +123,12 @@ public class NEW {
 				System.out.println("Please enter the maximum traveling distance.");
 				int MaxDis = myObj.nextInt();
 				//System.out.println("Data: " +MinDis +MaxDis);
-				
+				String ResultQuery = "select * from Manager where distance > ? and distance < ?;";
+				PreparedStatement preparedStatement = connection.prepareStatement(ResultQuery);
+				preparedStatement.setInt(1, MinDis);
+				preparedStatement.setInt(2, MaxDis);
+				ResultSet result = preparedStatement.executeQuery();
 				System.out.println("trip id, driver name, passenger name,start location, destination, duration");
-				
-				//This is getting the result from query
-				//ResultSet result = statement.executeQuery("select * from Testing;");
-				
-				//This is the way to print the query
 				ResultSetMetaData rsmd = result.getMetaData();
 				int columnsNumber = rsmd.getColumnCount();
 
