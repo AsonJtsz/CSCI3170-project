@@ -95,7 +95,33 @@ public class NEW {
 		
 		
 	private static void manager_operation(Connection conn) {
-		// TODO Auto-generated method stub
+		
+		
+		
+		System.out.println("Manager, what would you like to do?\r\n1. Find trips\r\n2. Go back\r\nPlease enter [1-2]");
+			int option = myObj.nextInt();
+			if(option == 1) {
+				System.out.println("Please enter the minimum traveling distance.");
+				int MinDis = myObj.nextInt();
+				System.out.println("Please enter the maximum traveling distance.");
+				int MaxDis = myObj.nextInt();
+				//System.out.println("Data: " +MinDis +MaxDis);
+				
+				System.out.println("trip id, driver name, passenger name,start location, destination, duration");
+				
+				//This is getting the result from query
+				//ResultSet result = statement.executeQuery("select * from Testing;");
+				
+				//This is the way to print the query
+				ResultSetMetaData rsmd = result.getMetaData();
+				int columnsNumber = rsmd.getColumnCount();
+
+				while (result.next()) {
+				    for(int i = 1; i < columnsNumber; i++)
+				        System.out.print(result.getString(i) + " ");
+				    System.out.println();
+				}
+			}
 		
 	}
 
