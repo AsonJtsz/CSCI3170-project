@@ -17,7 +17,7 @@ public class Main {
         try {
             Class.forName("com.mysql.jdbc.Driver");
             conn = DriverManager.getConnection(dbAddress, dbUsername, dbPassword);
-            System.out.println("Connect to DataBase Sucessfully!");
+            //System.out.println("Connect to DataBase Sucessfully!");
         } catch(ClassNotFoundException e)   {
             System.out.println("[Error]: Java MySQL DB Driver not found!!");
             System.exit(0);
@@ -51,6 +51,10 @@ public class Main {
             case 2:
                 passengerMenu(conn);
                 break;
+            case 3:
+                driverMenu(conn);
+                break;
+              
             case 5:
                 System.out.println("ByeBye!");
                 break outer;
@@ -623,16 +627,154 @@ public class Main {
                 
                 } while (rs.next());
             }
+        } catch (Exception e)   {
+            System.out.println(e);
+        }
+    }
+    
+    public static void driverMenu(Connection conn)   {
+        Scanner scan = new Scanner(System.in);
+        outer:
+        while(true) {
+            System.out.println("Driver, what would you like to do?");
+            System.out.println("1. Search requests");
+            System.out.println("2. Take a request");
+            System.out.println("3. Finish a trip");
+            System.out.println("4. Go back");
+            System.out.println("Please enter[1-4]");
+            int input;
+            input = scan.nextInt();
+            switch(input)   {
+                case 1:
+                    searchRequest(conn);
+                    break;
+                case 2:
+                    takeRequest(conn);
+                    break;
+                case 3:
+                    finishTrip(conn);
+                    break;
+                case 4:
+                    break outer;
+                default:
+                    System.out.println("Invalid input, enter again");
+                    break;
+            }
+        }
+    }
+    
+    public static void searchRequest(Connection conn)   {
+        Scanner scan = new Scanner(System.in);
+        String checkDID = "select * from Driver where DID = ?";
+        String getDriverInfo = "select Driving_Years, Model, Seats from Driver, Vehicle where Driver.VID = Vehicle.VID AND DID = ?";
+        StringBuilder getRequestSQL = new StringBuilder();
+        getRequestSQL.append("select RID, Passenger.Name, Number_Of_Passengers, Start_Location, Destination from Request, Taxi_Stop, Passenger where ");
+        getRequestSQL.append("Request.Start_Location = Taxi_Stop.Name and Request.PID = Passenger.PID and (ABS(? - Taxi_Stop.X_Coordinate) + ABS(? - Taxi_Stop.Y_Coordinate) <= ? ) ");
+        getRequestSQL.append("and (Request.Partial_Model like ? or Request.Partial_Model is null) and Number_Of_Passengers <= ? and Taken = false and Minimum_Driving_Years <= ? order by RID ");
+        int DID, x_coordinate, y_coordinate, maximum_distance, driving_years = 0, Seats = 0;
+        String Model = null;
+        
+        while(true) {
+            System.out.println("Please enter your ID.");
+            String input = scan.nextLine();
+            if (!input.matches("[0-9]+"))   {
+                System.out.println("[Error] Invalid input. Please enter digits only.");
+                continue;
+            }   else    {
+                DID = Integer.parseInt(input);
+            }
+            try {
+                PreparedStatement stmt = conn.prepareStatement(checkDID);
+                stmt.setInt(1, DID);
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next())  {
+                    break;
+                } else  {
+                    System.out.println("[Error] ID does not exist, enter again");
+                }
+            } catch (Exception e){
+                System.out.println(e);
+            }
+        }
+        
+        while(true) {
+            System.out.println("Please enter the coordinates of your location.");
+            String input = scan.nextLine();
+            if (!input.matches("[0-9 ]+"))   {
+                System.out.println("[Error] Invalid input. Please enter digits or space only.");
+                continue;
+            }   else    {
+                String[] temp = input.split(" ");
+                x_coordinate = Integer.parseInt(temp[0]);
+                y_coordinate = Integer.parseInt(temp[1]);
+                break;
+            }
+        }
+        
+        while(true) {
+            System.out.println("Please enter the maximum distance from you to passenger.");
+            String input = scan.nextLine();
+            if (!input.matches("[0-9]+"))   {
+                System.out.println("[Error] Invalid input. Please enter digits only.");
+                continue;
+            }   else    {
+                maximum_distance = Integer.parseInt(input);
+                break;
+            }
+        }
+        
+        try {
+            PreparedStatement stmt = conn.prepareStatement(getDriverInfo);
+            stmt.setInt(1, DID);
+            ResultSet rs = stmt.executeQuery();
+            rs.next();
+            driving_years = Integer.parseInt(rs.getString(1));
+            Model = rs.getString(2);
+            Seats = Integer.parseInt(rs.getString(3));      
+        } catch (Exception e)   {
+            System.out.println(e);
+        }
+        
+        try {
+            PreparedStatement stmt = conn.prepareStatement(getRequestSQL.toString());
+            stmt.setInt(1, x_coordinate);
+            stmt.setInt(2, y_coordinate);
+            stmt.setInt(3, maximum_distance);
+            stmt.setString(4, "%"+Model+"%");
+            stmt.setInt(5, Seats);
+            stmt.setInt(6, driving_years);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next())  {
+                System.out.println("request ID, passenger name, num of passengers, start location, destination");
+                do {
+                    StringBuilder temp = new StringBuilder();
+                    for (int i = 1; i <= 5; i++)    {
+                        temp.append(rs.getString(i));
+                        if (i != 5)
+                            temp.append(", ");
+                    }
+                    System.out.println(temp.toString());
+                } while (rs.next());
                 
+            } else  {
+                System.out.println("No Request Available");
+            }
             
         } catch (Exception e)   {
             System.out.println(e);
         }
         
         
-        
+      
         
         
     }
     
+    public static void takeRequest(Connection conn)   {
+        
+    }
+    
+    public static void finishTrip(Connection conn)   {
+        
+    }
 }
