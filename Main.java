@@ -327,7 +327,7 @@ public class Main {
                     requestRide(conn);
                     break;
                 case 2:
-                    
+                    checkRecord(conn);
                     break;
                 case 3:
                     break outer;
@@ -344,9 +344,11 @@ public class Main {
         String checkLocation = "select * from Taxi_Stop where Name = ?";
         String checkModel = "select * from Vehicle where Model LIKE ?";
         String checkYears = "select * from Driver where Driving_Years >= ?";
+        String requestSQL = "INSERT INTO Request(RID, PID, Number_Of_Passengers, Start_Location, Destination, Partial_Model, Minimum_Driving_Years, Taken) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?)";
         StringBuilder checkDriverNo = new StringBuilder();
         checkDriverNo.append("select count(*) from Driver, Vehicle where Driver.VID = Vehicle.VID and Seats >= ? and Driving_Years >= ? ");
-        String requestSQL = "INSERT INTO Request(PID, Number_Of_Passengers, Start_Location, Destination, Partial_Model, Minimum_Driving_Years, Taken) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        Boolean insert = false;
+        
         
         int ID, PassengerNo, minimum_dirving_years;
         String start_location, destination, partial_model;
@@ -483,49 +485,153 @@ public class Main {
             if (!partial_model.isEmpty())
                 stmt.setString(3, "%"+partial_model+"%");
             ResultSet rs = stmt.executeQuery();   
-            if (!rs.next())
+            if (!rs.next()) {
                 System.out.println("No driver match all your requirement at the same time. Modify your requirement and try again.");
+            }
             else    {
                 System.out.println("Your request is placed. "+ rs.getString(1)+" drivers are able to take the request.");
-            }
+                insert = true;
+           }
         } catch (Exception e)   {
             System.out.println(e);
         }
-        /*
-        //  INSERT INTO Request(PID, Number_Of_Passengers, Start_Location, Destination, Partial_Model, Minimum_Driving_Years, Taken) VALUES (?, ?, ?, ?, ?, ?, ?)
-                PreparedStatement requestStmt = conn.prepareStatement(requestSQL);
-                requestStmt.setInt(1, ID);
-                requestStmt.setInt(2, PassengerNo);
-                requestStmt.setString(3, start_location);
-                requestStmt.setString(4, destination);
-                if (!partial_model.isEmpty())
-                    requestStmt.setString(5, partial_model);
-                requestStmt.setInt(6, minimum_dirving_years);
-                requestStmt.setBoolean(7, false);
-                requestStmt.execute();
-                */
+        if (insert) {
+            try {
+                PreparedStatement stmt = conn.prepareStatement(requestSQL);
+                stmt.setInt(1, ID);
+                stmt.setInt(2, PassengerNo);
+                stmt.setString(3, start_location);
+                stmt.setString(4, destination);
+                if (!partial_model.isEmpty())   {
+                    stmt.setString(5, partial_model);
+                }
+                else    {
+                    stmt.setString(5, null);
+                }
+                if (minimum_dirving_years == -1)    {
+                    stmt.setInt(6, -1);
+                }
+                else    {
+                    stmt.setInt(6, minimum_dirving_years);
+                 }
+                stmt.setBoolean(7, false);
+                stmt.executeUpdate();
+            } catch (Exception e)   {
+                System.out.println(e);
+            }
+        }
+        
+        
+    }
+    
+    public static void checkRecord(Connection conn)   {
+        Scanner scan = new Scanner(System.in);
+        
+        String checkID = "select * from Passenger where PID = ?";
+        String checkLocation = "select * from Trips where Destination = ?";
+        StringBuilder checkRecordSQL = new StringBuilder();
+        checkRecordSQL.append("select TID, Driver.Name, Driver.VID, Model, Start_Time, End_Time, Fee, Start_Location, Destination from Trips, Driver, Vehicle ");
+        checkRecordSQL.append("where Driver.VID = Vehicle.VID AND Trips.DID = Driver.DID AND PID = ? AND Start_Time >= ? AND End_Time <= ? AND Destination = ? order by Start_Time desc");
+        
+        int ID;
+        String start_date, end_date, destination;
+        
+        while(true) {
+            System.out.println("Please enter your ID.");
+            String input = scan.nextLine();
+            if (!input.matches("[0-9]+"))   {
+                System.out.println("[Error]ID only contains digits");
+                continue;
+            }   else    {
+                ID = Integer.parseInt(input);
+            }
+            try {
+                PreparedStatement stmt = conn.prepareStatement(checkID);
+                stmt.setInt(1, ID);
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next())  {
+                    break;
+                } else  {
+                    System.out.println("[Error] ID does not exist, enter again");
+                }
+            } catch (Exception e){
+                System.out.println(e);
+            }
+        }
+        
+        while (true)   {
+            System.out.println("Please enter the start date.");
+            String input = scan.nextLine();
+            if (!input.matches("([0-9]{4})-([0-9]{2})-([0-9]{2})")) {
+                System.out.println("[Error]Incompatible date format");
+                continue;
+            } else  {
+                start_date = input;
+                break;
+            }
+        }
+        
+        while (true)   {
+            System.out.println("Please enter the end date.");
+            String input = scan.nextLine();
+            if (!input.matches("([0-9]{4})-([0-9]{2})-([0-9]{2})")) {
+                System.out.println("[Error]Incompatible date format");
+                continue;
+            } else  {
+                end_date = input;
+                break;
+            }
+        }
+        
+        while(true) {
+            System.out.println("Please enter the destination.");
+            destination = scan.nextLine();
+            try {
+                PreparedStatement stmt = conn.prepareStatement(checkLocation);
+                stmt.setString(1, destination);
+                ResultSet rs = stmt.executeQuery();   
+                if (rs.next())  
+                    break;
+                else    {
+                    System.out.println("[Error] Dentination Not found");
+                }
+            } catch(Exception e)    {
+                System.out.println(e);
+            }
+        }
+        
         try {
-            PreparedStatement stmt = conn.prepareStatement(requestSQL);
-            stmt.setInt(1, ID);
-            stmt.setInt(2, PassengerNo);
-            stmt.setString(3, start_location);
-            stmt.setString(4, destination);
-            if (!partial_model.isEmpty())
-                stmt.setString(5, partial_model);
-            else
-                stmt.setString(5, null);
-            if (minimum_dirving_years == -1)
-                stmt.setInt(6, -1);
-            else
-                stmt.setInt(6, minimum_dirving_years);
-            stmt.setBoolean(7, false);
-            stmt.execute();
-            //Test
-            System.out.println("Finish inserting request!");
+            PreparedStatement stmt1 = conn.prepareStatement(checkRecordSQL.toString());
+            stmt1.setInt(1, ID);
+            stmt1.setString(2, start_date);
+            stmt1.setString(3, end_date);
+            stmt1.setString(4, destination);
+            ResultSet rs = stmt1.executeQuery();  
+            
+            if (!rs.next())  {
+                System.out.println("No Record Found.");
+            } else  {
+                System.out.println("Trip_id, Driver Name, Vehicle ID, Vehicle Model, Start, End, Fee, Start Location, Destination");
+                do {
+                    StringBuilder temp = new StringBuilder();
+                    for (int i = 1; i <= 9; i++)    {
+                        temp.append(rs.getString(i));
+                        if (i != 9)
+                            temp.append(", ");
+                    }
+                    System.out.println(temp.toString());
+                
+                } while (rs.next());
+            }
+                
             
         } catch (Exception e)   {
             System.out.println(e);
         }
+        
+        
+        
+        
         
     }
     
