@@ -1,9 +1,11 @@
-package csci3170project;
+package proj;
 
 import java.sql.*;
 import java.util.Scanner;
 import java.io.*;
-import java.util.Calendar;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 
 public class Main {
@@ -54,7 +56,9 @@ public class Main {
             case 3:
                 driverMenu(conn);
                 break;
-              
+            case 4:
+                managerMenu(conn);
+                break;
             case 5:
                 System.out.println("ByeBye!");
                 break outer;
@@ -123,7 +127,7 @@ public class Main {
         Taxi_StopSQL.append("X_Coordinate Integer NOT NULL,  Y_Coordinate Integer NOT NULL,");
         Taxi_StopSQL.append("PRIMARY KEY(Name));");
         
-        TripsSQL.append("create table Trips(  TID Integer NOT NULL,  DID Integer NOT NULL,");
+        TripsSQL.append("create table Trips(  TID Integer NOT NULL AUTO_INCREMENT,  DID Integer NOT NULL,");
         TripsSQL.append("  PID Integer NOT NULL,  Start_Time DATETIME NOT NULL,  End_Time DATETIME,");
         TripsSQL.append("  Start_Location VARCHAR(20) NOT NULL,  Destination VARCHAR(20) NOT NULL,  Fee Integer,");
         TripsSQL.append("  PRIMARY KEY(TID),  FOREIGN KEY(DID) REFERENCES Driver(DID),");
@@ -341,12 +345,12 @@ public class Main {
             }
         }
     }
-    
+    //INSERT INTO Request(RID, PID, Number_Of_Passengers, Start_Location, Destination, Partial_Model, Minimum_Driving_Years, Taken) VALUES (NULL, 1, 1, "Mong Kok", "Lam Tin", "Honda", -1, false);
     public static void requestRide(Connection conn) {
         Scanner scan = new Scanner(System.in);
         String checkID = "select * from Passenger where PID = ?";
         String checkLocation = "select * from Taxi_Stop where Name = ?";
-        String checkModel = "select * from Vehicle where Model LIKE ?";
+        String checkModel = "select * from Vehicle where Model LIKE binary ?";
         String checkYears = "select * from Driver where Driving_Years >= ?";
         String requestSQL = "INSERT INTO Request(RID, PID, Number_Of_Passengers, Start_Location, Destination, Partial_Model, Minimum_Driving_Years, Taken) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?)";
         StringBuilder checkDriverNo = new StringBuilder();
@@ -670,7 +674,7 @@ public class Main {
         StringBuilder getRequestSQL = new StringBuilder();
         getRequestSQL.append("select RID, Passenger.Name, Number_Of_Passengers, Start_Location, Destination from Request, Taxi_Stop, Passenger where ");
         getRequestSQL.append("Request.Start_Location = Taxi_Stop.Name and Request.PID = Passenger.PID and (ABS(? - Taxi_Stop.X_Coordinate) + ABS(? - Taxi_Stop.Y_Coordinate) <= ? ) ");
-        getRequestSQL.append("and (Request.Partial_Model like ? or Request.Partial_Model is null) and Number_Of_Passengers <= ? and Taken = false and Minimum_Driving_Years <= ? order by RID ");
+        getRequestSQL.append("and (? like binary CONCAT('%',Request.Partial_Model,'%') or Request.Partial_Model is null) and Number_Of_Passengers <= ? and Taken = false and Minimum_Driving_Years <= ? order by RID ");
         int DID, x_coordinate, y_coordinate, maximum_distance, driving_years = 0, Seats = 0;
         String Model = null;
         
@@ -740,7 +744,7 @@ public class Main {
             stmt.setInt(1, x_coordinate);
             stmt.setInt(2, y_coordinate);
             stmt.setInt(3, maximum_distance);
-            stmt.setString(4, "%"+Model+"%");
+            stmt.setString(4, Model);
             stmt.setInt(5, Seats);
             stmt.setInt(6, driving_years);
             ResultSet rs = stmt.executeQuery();
@@ -763,18 +767,365 @@ public class Main {
         } catch (Exception e)   {
             System.out.println(e);
         }
-        
-        
-      
-        
-        
     }
+    //insert into Trips(TID, DID, PID, Start_Time, End_Time, Start_Location, Destination, Fee) values (null, 1, 1, "2018-1-1 00:00:01", NULL, "Mong Kok", "Sham Shui Po", 100);
+    
+    //select RID from Request, Passenger where Request.PID = Passenger.PID
+    //and ("Honda" like binary CONCAT('%',Request.Partial_Model,'%') or Request.Partial_Model is null) and Number_Of_Passengers <= 8 and Taken = false and Minimum_Driving_Years <= 5 order by RID;
+     
     
     public static void takeRequest(Connection conn)   {
+        Scanner scan = new Scanner(System.in);
+        String checkDID = "select * from Driver where DID = ? ";
+        String checkUnfinished = "select * from Trips where DID = ? and End_Time is null";
+        String getDriverInfo = "select Driving_Years, Model, Seats from Driver, Vehicle where Driver.VID = Vehicle.VID AND DID = ?";
+        StringBuilder getRequest = new StringBuilder();
+        getRequest.append("select RID from Request, Passenger where Request.PID = Passenger.PID ");
+        getRequest.append("and (? like binary CONCAT('%',Request.Partial_Model,'%') or Request.Partial_Model is null) ");
+        getRequest.append("and Number_Of_Passengers <= ? and Taken = false and Minimum_Driving_Years <= ? order by RID ;");
+        String requestInfo = "select Request.PID, Start_Location, Destination, Name from Request, Passenger where Passenger.PID = Request.PID and RID = ? ;";
+        String insertTrip = "insert into Trips(TID, DID, PID, Start_Time, End_Time, Start_Location, Destination, Fee) values (null, ?, ?, ?, CAST(NULL AS DATETIME), ?, ?, NULL);";
         
+        boolean takeRequest = false;
+        boolean anyAvailableRequest = false;
+        boolean insertTrips = false;
+        int DID, driving_years = 0, Seats = 0, RID = 0, PID = 0;
+        String Model = null, start_time, start_location = null, destination = null, passengerName = null;
+        List<Integer> requestAvailable = new ArrayList<>();
+        
+        while(true) {
+            System.out.println("Please enter your ID.");
+            String input = scan.nextLine();
+            if (!input.matches("[0-9]+"))   {
+                System.out.println("[Error] Invalid input. Please enter digits only.");
+                continue;
+            }   else    {
+                DID = Integer.parseInt(input);
+            }
+            try {
+                PreparedStatement stmt = conn.prepareStatement(checkDID);
+                stmt.setInt(1, DID);
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next())  {
+                    break;
+                } else  {
+                    System.out.println("[Error] ID does not exist, enter again");
+                }
+            } catch (Exception e){
+                System.out.println(e);
+            }
+        }
+        
+        try {
+            PreparedStatement stmt = conn.prepareStatement(checkUnfinished);
+            stmt.setInt(1, DID);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next())  {
+                System.out.println("[Error] you have unfinished trips.");
+            } else  {
+                //System.out.println("you can take a request");
+                takeRequest = true;
+            }
+        } catch (Exception e)   {
+            System.out.println(e);
+        }
+        
+        if (takeRequest)    {
+            try {
+                PreparedStatement stmt = conn.prepareStatement(getDriverInfo);
+                stmt.setInt(1, DID);
+                ResultSet rs = stmt.executeQuery();
+                rs.next();
+                driving_years = Integer.parseInt(rs.getString(1));
+                Model = rs.getString(2);
+                Seats = Integer.parseInt(rs.getString(3));      
+            } catch (Exception e)   {
+                System.out.println(e);
+            }
+        }
+        
+        if (takeRequest)    {
+            try {
+                PreparedStatement stmt = conn.prepareStatement(getRequest.toString());
+                stmt.setString(1, Model);
+                stmt.setInt(2, Seats);
+                stmt.setInt(3, driving_years);
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next())  {
+                    do {
+                        requestAvailable.add(Integer.parseInt(rs.getString(1)));
+                    } while (rs.next());
+                    anyAvailableRequest = true;
+                } else  {
+                    System.out.println("No Request Available");
+                }
+                
+            } catch(Exception e)    {
+                System.out.println(e);
+            }
+            
+        }
+        
+        if (anyAvailableRequest)    {
+            while(true) {
+                System.out.println("Please enter the request ID.");
+                String input = scan.nextLine();
+                if (!input.matches("[0-9]+"))   {
+                    System.out.println("[Error] Invalid input. Please enter digits only.");
+                    continue;
+                }   else    {
+                    RID = Integer.parseInt(input);
+                    if (requestAvailable.contains(RID)) {
+                        insertTrips = true;
+                        break;
+                    } 
+                }
+            }
+        }
+        
+        if (insertTrips)  {
+            try {
+                PreparedStatement stmt = conn.prepareStatement(requestInfo);
+                stmt.setInt(1, RID);
+                ResultSet rs = stmt.executeQuery();
+                rs.next();
+                PID = Integer.parseInt(rs.getString(1));
+                start_location = rs.getString(2);
+                destination = rs.getString(3);
+                passengerName = rs.getString(4);
+                
+            } catch (Exception e)   {
+                System.out.println(e);
+            }
+        }
+        
+        if (insertTrips)    {
+            try {
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+                start_time = sdf.format(timestamp).toString();
+                PreparedStatement stmt = conn.prepareStatement(insertTrip, Statement.RETURN_GENERATED_KEYS);
+                stmt.setInt(1, DID);
+                stmt.setInt(2, PID);
+                stmt.setTimestamp(3,  Timestamp.valueOf(start_time));
+                stmt.setString(4, start_location);
+                stmt.setString(5, destination);
+                stmt.executeUpdate();
+                ResultSet rs = stmt.getGeneratedKeys();
+                rs.next();
+                int TID = rs.getInt(1);
+                
+                System.out.println("Trip ID, Passenger name, Start");
+                StringBuilder temp = new StringBuilder();
+                temp.append(TID);
+                temp.append(", ");
+                temp.append(passengerName);
+                temp.append(", ");
+                temp.append(start_time);
+                System.out.println(temp.toString());
+            } catch (Exception e)   {
+                System.out.println(e);
+            }
+        }  
     }
     
     public static void finishTrip(Connection conn)   {
+        Scanner scan = new Scanner(System.in);
+        String checkDID = "select * from Driver where DID = ? ";
+        String getTrip = "Select TID, Trips.PID, Start_Time, Name from Trips, Passenger where Trips.PID = Passenger.PID and DID = ? and End_Time is null ";
+        String updateTrip = "update Trips set Fee = ? and End_Time = ? where TID = ? ; ";
+        int DID, TID = 0;
+        String start_time = null, end_time, passengerName = null;
+        
+        while(true) {
+            System.out.println("Please enter your ID.");
+            String input = scan.nextLine();
+            if (!input.matches("[0-9]+"))   {
+                System.out.println("[Error]ID only contains digits");
+                continue;
+            }   else    {
+                DID = Integer.parseInt(input);
+            }
+            try {
+                PreparedStatement stmt = conn.prepareStatement(checkDID);
+                stmt.setInt(1, DID);
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next())  {
+                    break;
+                } else  {
+                    System.out.println("[Error] ID does not exist, enter again");
+                }
+            } catch (Exception e){
+                System.out.println(e);
+            }
+        }
+        boolean getOut = true;
+        try {
+            PreparedStatement stmt = conn.prepareStatement(getTrip);
+            stmt.setInt(1, DID);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next())  {
+                StringBuilder temp = new StringBuilder();
+                for (int i = 1; i <= 3; i++)    {
+                    temp.append(rs.getString(i));
+                    if (i != 3)
+                        temp.append(", ");
+                }
+                TID = Integer.parseInt(rs.getString(1));
+                start_time = rs.getString(3);
+                passengerName = rs.getString(4);
+                System.out.println("Trip ID, Passenger ID, Start");
+                System.out.println(temp.toString());
+            } else {
+                System.out.println("[Error] No unfinished trip found");
+                getOut = false;
+                
+            }
+        } catch(Exception e)    {
+            System.out.println(e);
+        }
+        
+        
+        boolean finish = false;
+        if (getOut) {
+            while(true) {
+                System.out.println("Do you wish to finish the trip? [y/n]");
+                String input = scan.nextLine();
+                if (input.equals("y")||input.equals("n"))   {
+                    if (input.equals("y"))
+                        finish = true;
+                    break;
+                }   else    {
+                    System.out.println("[Error]Input must be y/n");
+                }
+            } 
+        }
+
+        if (finish) {
+            try {
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-mm-dd HH:mm:ss");
+                Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+                end_time = sdf.format(timestamp).toString();
+                java.util.Date startTime = sdf.parse(start_time);
+                java.util.Date finishTime = sdf.parse(end_time);
+                double duration = finishTime.getTime() - startTime.getTime();
+                int fee = (int)(duration/1000/60);
+                PreparedStatement stmt = conn.prepareStatement(updateTrip);
+                stmt.setInt(1, fee);
+                stmt.setTimestamp(2,  Timestamp.valueOf(end_time));
+                stmt.setInt(3, TID);
+                stmt.executeUpdate();
+                
+                System.out.println("Trip ID , Passenger name, Start, End, Fee");
+                StringBuilder temp = new StringBuilder();
+                temp.append(TID);
+                temp.append(", ");
+                temp.append(passengerName);
+                temp.append(", ");
+                temp.append(start_time);
+                temp.append(", ");
+                temp.append(end_time);
+                temp.append(", ");
+                temp.append(fee);
+                System.out.println(temp.toString());
+            } catch (Exception e)   {
+                System.out.println(e);
+            }
+        }
+    }
+    
+    public static void managerMenu(Connection conn) {
+        Scanner scan = new Scanner(System.in);
+        
+        outer:
+        while(true) {
+            System.out.println("Manager, what would you like to do?");
+            System.out.println("1. Find trips");
+            System.out.println("2. Go back");
+            System.out.println("Please enter [1-2]");
+            int input = scan.nextInt();
+            switch(input)   {
+                case 1:
+                    findTrips(conn);
+                    break;
+                case 2:
+                    break outer;
+            }
+        }
+    }
+    //select TID, Driver.Name, Passenger.Name, Start_Location, Destination, Start_Time, End_Time
+    //from Trips, Driver, Passenger, Taxi_Stop t1, Taxi_Stop t2 
+    //where Trips.DID = Driver.DID and Trips.PID = Passenger.PID and End_Time is not null 
+    //Trips.Start_Location = t1.Name and Trips.Destination = t2.Name 
+    //and ABS(t1.X_Coordinate-t2.X_Coordinate) + ABS(t1.Y_Coordinate-t2.Y_Coordinate) between 100 and 120;
+    public static void findTrips(Connection conn)   {
+        Scanner scan = new Scanner(System.in);
+        
+        StringBuilder finishedTrips = new StringBuilder();
+        finishedTrips.append("select TID, Driver.Name, Passenger.Name, Start_Location, Destination, Start_Time, End_Time ");
+        finishedTrips.append("from Trips, Driver, Passenger, Taxi_Stop t1, Taxi_Stop t2 where Trips.DID = Driver.DID ");
+        finishedTrips.append("and End_Time is not null ");
+        finishedTrips.append("and Trips.PID = Passenger.PID and Trips.Start_Location = t1.Name and Trips.Destination = t2.Name ");
+        finishedTrips.append("and ABS(t1.X_Coordinate-t2.X_Coordinate) + ABS(t1.Y_Coordinate-t2.Y_Coordinate) between ? and ? ;");
+        
+        int minDist = 0, maxDist = 0;
+        while(true) {
+            System.out.println("Please enter the minimum traveling distance.");
+            String temp = scan.nextLine();
+            if (!temp.matches("[0-9]+"))    {
+                System.out.println("Please enter digits only");
+                continue;
+            } else  {
+                minDist = Integer.parseInt(temp);
+                break;
+            }
+        }
+        
+        while(true) {
+            System.out.println("Please enter the maximum traveling distance.");
+            String temp = scan.nextLine();
+            if (!temp.matches("[0-9]+"))    {
+                System.out.println("Please enter digits only");
+                continue;
+            } else  {
+                maxDist = Integer.parseInt(temp);
+                break;
+            }
+        }
+
+        try{
+            PreparedStatement stmt = conn.prepareStatement(finishedTrips.toString());
+            stmt.setInt(1, minDist);
+            stmt.setInt(2, maxDist);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next())  {
+                System.out.println("trip id, driver name, passenger name, start location, destination, duration");
+                do {
+                    String start_time = rs.getString(6);
+                    String end_time = rs.getString(7);
+                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-mm-dd HH:mm:ss");
+                    java.util.Date startTime = sdf.parse(start_time);
+                    java.util.Date finishTime = sdf.parse(end_time);
+                    double timeDiff = finishTime.getTime() - startTime.getTime();
+                    int duration = (int)(timeDiff/1000/60);
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 1; i <= 5; i++)    {
+                        sb.append(rs.getString(i));
+                        sb.append(", ");
+                    }
+                    sb.append(duration);
+                    System.out.println(sb.toString());
+                    
+                } while (rs.next());
+                
+            } else  {
+                System.out.println("No finished trips satisfy your requirement.");
+            }
+            
+            
+        } catch (Exception e)   {
+            System.out.println(e);
+        }
         
     }
 }
