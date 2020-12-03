@@ -1,5 +1,3 @@
-package proj;
-
 import java.sql.*;
 import java.util.Scanner;
 import java.io.*;
@@ -785,6 +783,7 @@ public class Main {
         getRequest.append("and Number_Of_Passengers <= ? and Taken = false and Minimum_Driving_Years <= ? order by RID ;");
         String requestInfo = "select Request.PID, Start_Location, Destination, Name from Request, Passenger where Passenger.PID = Request.PID and RID = ? ;";
         String insertTrip = "insert into Trips(TID, DID, PID, Start_Time, End_Time, Start_Location, Destination, Fee) values (null, ?, ?, ?, CAST(NULL AS DATETIME), ?, ?, NULL);";
+        String updateRequest = "Update Request set Taken = true where RID = ? ";
         
         boolean takeRequest = false;
         boolean anyAvailableRequest = false;
@@ -923,6 +922,12 @@ public class Main {
                 temp.append(", ");
                 temp.append(start_time);
                 System.out.println(temp.toString());
+                
+                PreparedStatement stmt2 = conn.prepareStatement(updateRequest);
+                stmt2.setInt(1, RID);
+                stmt2.executeUpdate();
+                
+                
             } catch (Exception e)   {
                 System.out.println(e);
             }
@@ -1003,7 +1008,7 @@ public class Main {
 
         if (finish) {
             try {
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-mm-dd HH:mm:ss");
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                 Timestamp timestamp = new Timestamp(System.currentTimeMillis());
                 end_time = sdf.format(timestamp).toString();
                 java.util.Date startTime = sdf.parse(start_time);
@@ -1103,7 +1108,7 @@ public class Main {
                 do {
                     String start_time = rs.getString(6);
                     String end_time = rs.getString(7);
-                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-mm-dd HH:mm:ss");
+                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                     java.util.Date startTime = sdf.parse(start_time);
                     java.util.Date finishTime = sdf.parse(end_time);
                     double timeDiff = finishTime.getTime() - startTime.getTime();
